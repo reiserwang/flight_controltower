@@ -1,0 +1,15 @@
+{
+  "name": "flight_controltower",
+  "version": "1.0.0",
+  "description": "Flight Control Tower - Electron App",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "jest"
+  },
+  "author": "Antigravity",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}

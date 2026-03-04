@@ -1,0 +1,15 @@
+
+# Agent Framework (Local Overlay)
+agent/
+.gemini/
+.claude/
+.claude/
+.shared/
+
+# Node
+node_modules/
+dist/
+
+# Env & OS
+.env
+.DS_Store
