@@ -3,7 +3,6 @@
 agent/
 .gemini/
 .claude/
-.claude/
 .shared/
 
 # Node

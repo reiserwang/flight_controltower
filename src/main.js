@@ -86,7 +86,9 @@ function setupAudioBrowserView() {
     audioContent = new BrowserView({
         webPreferences: {
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            // Allow autoplaying unmuted audio
+            autoplayPolicy: 'no-user-gesture-required'
         }
     });
     // Note: we do NOT add it to the mainWindow (keeps it completely hidden)
@@ -95,7 +97,11 @@ function setupAudioBrowserView() {
     mainWindow.addBrowserView(audioContent);
     audioContent.setBounds({ x: 0, y: 0, width: 0, height: 0 });
 
-    audioContent.webContents.loadURL('https://www.flightradar24.com/25.15,121.10/10');
+    // Use a YouTube Live ATC stream as requested by the user.
+    // We add ?autoplay=1 to the URL to ensure it starts playing immediately
+    // Note: YouTube often blocks autoplay for non-muted videos if they aren't interacted with,
+    // but Electron's BrowserView can bypass this if we configure it correctly.
+    audioContent.webContents.loadURL('https://www.youtube.com/watch?v=NOZVUBsCDEI?autoplay=1');
 }
 
 function updateViewBounds() {

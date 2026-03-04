@@ -12,7 +12,7 @@ A lightweight macOS native-feeling application (built with Electron) that displa
 1. **Application Shell**: An Electron app with a frameless or minimal window style displaying a primary `BrowserView` or `webview`.
 2. **Primary View**: Loads `https://www.flightradar24.com/25.08,121.22/14` (Flight Map).
 3. **Session Management (Anti-Timeout)**: App must inject a script into the primary view that detects and aggressively removes DOM elements associated with the session timeout modal and its overlay.
-4. **Background Audio View**: A hidden `BrowserView` or `webview` that loads `https://www.flightradar24.com/25.15,121.10/10` to stream ATC audio.
+4. **Background Audio View**: A hidden `BrowserView` or `webview` that loads a YouTube Livestream (`https://www.youtube.com/watch?v=NOZVUBsCDEI`) to stream ATC audio.
 5. **Audio Controls**: A UI control (button/toggle) overlaid on the main window or integrated into a custom title bar that mutes/unmutes the hidden audio webview.
 6. **UI/UX Themes**: The app UI (like the mute button and custom titlebar) must support both **Day and Night views**, automatically adapting to system preferences.
 7. **Zero-Interaction Execution**: The deployment and iteration process must be fully streamlined to require minimal to zero user prompts, leveraging autonomous workflows.
