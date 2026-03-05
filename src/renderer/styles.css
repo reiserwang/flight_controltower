@@ -84,3 +84,9 @@ body {
 .glass-btn:active {
   transform: scale(0.96);
 }
+
+.glass-btn.muted {
+  background: rgba(255, 59, 48, 0.15);
+  border-color: rgba(255, 59, 48, 0.4);
+  color: rgba(242, 242, 247, 0.6);
+}

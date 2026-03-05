@@ -38,8 +38,7 @@ function setupMapBrowserView() {
     mainWindow.addBrowserView(mapContent);
     updateViewBounds(); // Initial sizing based on titlebar height
 
-    mapContent.webContents.loadURL('https://www.flightradar24.com/25.08,121.22/14');
-    // Instead of just loading the URL, we listen for finish load to inject the script
+    // Listen for finish load to inject the anti-timeout script
     mapContent.webContents.loadURL('https://www.flightradar24.com/25.08,121.22/14')
         .then(() => {
             // Inject anti-timeout mutation observer
@@ -78,6 +77,65 @@ function setupMapBrowserView() {
         })();
       `;
             mapContent.webContents.executeJavaScript(injectScript);
+
+            // Inject CSS to suppress known ad/promo elements
+            mapContent.webContents.insertCSS(`
+                ins.adsbygoogle,
+                iframe[src*="doubleclick"],
+                iframe[src*="googlesyndication"],
+                iframe[src*="amazon-adsystem"] {
+                    display: none !important;
+                }
+            `);
+
+            // Inject a JS sweeper to find and remove the right-side promo panel.
+            // FR24 uses minified class names, so we fingerprint by visible content + geometry.
+            const panelSweeperScript = `
+                (function() {
+                    // Text strings visible in the right promotional panel
+                    const PANEL_FINGERPRINTS = [
+                        'flightradar24 on youtube',
+                        'unlock 60+ premium features',
+                        'try free for 7 days',
+                        'b2b: explore our custom flight data',
+                    ];
+
+                    function findAndZapPanel() {
+                        for (const fingerprint of PANEL_FINGERPRINTS) {
+                            // Find any element whose direct text matches our fingerprint
+                            const all = document.querySelectorAll('*');
+                            for (const el of all) {
+                                const text = el.textContent.trim().toLowerCase();
+                                if (text.startsWith(fingerprint) && el.children.length <= 3) {
+                                    // Walk up from the match to find a tall right-anchored container
+                                    let target = el;
+                                    for (let i = 0; i < 12; i++) {
+                                        target = target.parentElement;
+                                        if (!target || target === document.body) break;
+                                        const r = target.getBoundingClientRect();
+                                        // Panel signature: tall, at least 200px wide, 
+                                        // anchored to the right side of the viewport
+                                        if (r.width > 150 && r.height > 300 && r.right >= window.innerWidth - 50) {
+                                            target.remove();
+                                            console.log('Zapped FR24 promo panel.');
+                                            return true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        return false;
+                    }
+
+                    // Run immediately on load
+                    findAndZapPanel();
+
+                    // Hook into the existing MutationObserver (re-run on DOM changes)
+                    const panelObserver = new MutationObserver(() => findAndZapPanel());
+                    panelObserver.observe(document.body, { childList: true, subtree: true });
+                })();
+            `;
+            mapContent.webContents.executeJavaScript(panelSweeperScript);
         })
         .catch(err => console.error("Failed to load map View:", err));
 }
@@ -101,7 +159,7 @@ function setupAudioBrowserView() {
     // We add ?autoplay=1 to the URL to ensure it starts playing immediately
     // Note: YouTube often blocks autoplay for non-muted videos if they aren't interacted with,
     // but Electron's BrowserView can bypass this if we configure it correctly.
-    audioContent.webContents.loadURL('https://www.youtube.com/watch?v=NOZVUBsCDEI?autoplay=1');
+    audioContent.webContents.loadURL('https://www.youtube.com/watch?v=NOZVUBsCDEI&autoplay=1');
 }
 
 function updateViewBounds() {
