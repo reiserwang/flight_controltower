@@ -15,8 +15,8 @@ A lightweight macOS native-styled application leveraging Electron to display liv
 graph TD
     subgraph Electron Main Process ["Main Process (src/main.js)"]
         BW["BrowserWindow\n(frameless, hiddenInset)"]
-        BV_MAP["BrowserView: Map\n(flightradar24.com)"]
-        BV_AUD["BrowserView: Audio\n(youtube ATC — 0×0 size)"]
+        BV_MAP["WebContentsView: Map\n(flightradar24.com)"]
+        BV_AUD["WebContentsView: Audio\n(youtube ATC — 0×0 size)"]
         IPC["ipcMain.handle('toggle-audio')"]
         OBS["MutationObserver Injection\n(anti-timeout zapper)"]
     end
@@ -68,13 +68,20 @@ npm start
 ```
 
 ### Testing
-To run the automated test suite (Jest unit tests + Playwright system tests):
+Run the Jest unit tests:
 ```bash
 npm test
 ```
 
-> **Note:** The Playwright system tests (`test/system.spec.js`) require a live macOS GUI session — they launch the full Electron app and interact with real windows.
+Run the Playwright end-to-end suite (launches the full Electron app):
+```bash
+npm run test:system
+```
+
+> **Note:** `npm run test:system` launches the real app and requires a live macOS GUI
+> session. The unit and system specs use separate runners (Jest vs. Playwright), so the
+> Playwright spec is excluded from `npm test`.
 
 ## Audio Source
 
-ATC audio is streamed from a public YouTube Live feed (`youtube.com/watch?v=NOZVUBsCDEI`), loaded in a hidden zero-size `BrowserView` with `autoplayPolicy: 'no-user-gesture-required'` to allow playback without user interaction.
+ATC audio is streamed from a public YouTube Live feed (`youtube.com/watch?v=NOZVUBsCDEI`), loaded in a hidden zero-size `WebContentsView` with `autoplayPolicy: 'no-user-gesture-required'` to allow playback without user interaction.

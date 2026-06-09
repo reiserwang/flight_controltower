@@ -1,55 +1,44 @@
-const { _electron: electron } = require('playwright');
+const { test, expect, _electron: electron } = require('@playwright/test');
 const path = require('path');
 
-describe('Flight Control Tower - System Tests', () => {
-    let electronApp;
-    let window;
+let electronApp;
+let window;
 
-    beforeAll(async () => {
-        electronApp = await electron.launch({
-            args: ['src/main.js'],
-            recordVideo: { dir: 'test-videos/' }
-        });
-        window = await electronApp.firstWindow();
-    }, 30000);
-
-    afterAll(async () => {
-        if (electronApp) {
-            await electronApp.close();
-        }
+test.beforeAll(async () => {
+    electronApp = await electron.launch({
+        args: [path.join(__dirname, '..', 'src', 'main.js')],
+        recordVideo: { dir: 'test-videos/' }
     });
+    window = await electronApp.firstWindow();
+});
 
-    it('Launches the app and title is correct', async () => {
-        const title = await window.title();
-        expect(title).toBe('Flight Control Tower');
-    });
+test.afterAll(async () => {
+    if (electronApp) {
+        await electronApp.close();
+    }
+});
 
-    it('Verifies the UI shell loads the mute button', async () => {
-        const muteBtn = await window.locator('#mute-btn');
-        await expect(muteBtn).toBeVisible();
-        await expect(muteBtn).toHaveText(/Live ATC/);
-    });
+test('launches the app with the correct title', async () => {
+    await expect.poll(() => window.title()).toBe('Flight Control Tower');
+});
 
-    // Note: We cannot easily inspect the contents of the BrowserViews from standard Playwright 
-    // without digging into the electronApp context and finding the webContents manually, 
-    // but we can test the IPC side of the mute toggle works.
-    it('Toggles the mute state via UI click', async () => {
-        const muteBtn = await window.locator('#mute-btn');
-        const muteIcon = await window.locator('#mute-icon');
+test('renders the mute button in the UI shell', async () => {
+    const muteBtn = window.locator('#mute-btn');
+    await expect(muteBtn).toBeVisible();
+    await expect(muteBtn).toHaveText(/Live ATC/);
+});
 
-        // Default icon is unmuted 🔊
-        let iconText = await muteIcon.innerText();
-        expect(iconText).toBe('🔊');
+// Note: we can't inspect the hidden BrowserView audio state from the renderer,
+// but we can verify the mute toggle round-trips through IPC and updates the icon.
+test('toggles the mute state via UI click', async () => {
+    const muteBtn = window.locator('#mute-btn');
+    const muteIcon = window.locator('#mute-icon');
 
-        // Click to mute
-        await muteBtn.click();
-        iconText = await muteIcon.innerText();
-        expect(iconText).toBe('🔇');
+    await expect(muteIcon).toHaveText('🔊'); // default: unmuted
 
-        // Click to unmute
-        await muteBtn.click();
-        iconText = await muteIcon.innerText();
-        expect(iconText).toBe('🔊');
-    });
+    await muteBtn.click();
+    await expect(muteIcon).toHaveText('🔇'); // muted
 
+    await muteBtn.click();
+    await expect(muteIcon).toHaveText('🔊'); // unmuted again
 });

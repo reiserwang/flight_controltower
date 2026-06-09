@@ -1,37 +1,34 @@
-// Basic unit test just to verify our IPC logic outline is sound.
-// Testing electron's Main Process directly is hard without a mock, 
-// so we'll do a simple mock for now until we move to Playwright for system tests.
+// Unit test for the audio mute-toggle logic that the main-process IPC handler
+// (`ipcMain.handle('toggle-audio')`) actually calls.
+const { toggleAudioMuted } = require('../src/toggleAudio');
 
-describe('IPC Audio Toggle Logic', () => {
-    let mockAudioContent;
-    let isMutedState = false;
+describe('toggleAudioMuted', () => {
+    let mockWebContents;
+    let isMutedState;
 
     beforeEach(() => {
         isMutedState = false;
-        mockAudioContent = {
-            webContents: {
-                isAudioMuted: jest.fn(() => isMutedState),
-                setAudioMuted: jest.fn((mute) => { isMutedState = mute; })
-            }
+        mockWebContents = {
+            isAudioMuted: jest.fn(() => isMutedState),
+            setAudioMuted: jest.fn((mute) => { isMutedState = mute; })
         };
     });
 
-    it('should correctly toggle audio from unmuted to muted', () => {
-        // Mock of the ipcMain logic in main.js
-        const isCurrentlyMuted = mockAudioContent.webContents.isAudioMuted();
-        mockAudioContent.webContents.setAudioMuted(!isCurrentlyMuted);
+    it('mutes when currently unmuted and returns the new state', () => {
+        const result = toggleAudioMuted(mockWebContents);
 
-        expect(mockAudioContent.webContents.isAudioMuted).toHaveBeenCalled();
-        expect(mockAudioContent.webContents.setAudioMuted).toHaveBeenCalledWith(true);
+        expect(mockWebContents.setAudioMuted).toHaveBeenCalledWith(true);
         expect(isMutedState).toBe(true);
+        expect(result).toBe(true);
     });
 
-    it('should correctly toggle audio from muted to unmuted', () => {
+    it('unmutes when currently muted and returns the new state', () => {
         isMutedState = true;
-        const isCurrentlyMuted = mockAudioContent.webContents.isAudioMuted();
-        mockAudioContent.webContents.setAudioMuted(!isCurrentlyMuted);
 
-        expect(mockAudioContent.webContents.setAudioMuted).toHaveBeenCalledWith(false);
+        const result = toggleAudioMuted(mockWebContents);
+
+        expect(mockWebContents.setAudioMuted).toHaveBeenCalledWith(false);
         expect(isMutedState).toBe(false);
+        expect(result).toBe(false);
     });
 });

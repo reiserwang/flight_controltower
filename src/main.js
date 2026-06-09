@@ -1,5 +1,6 @@
-const { app, BrowserWindow, BrowserView, ipcMain, nativeTheme } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, nativeTheme } = require('electron');
 const path = require('node:path');
+const { toggleAudioMuted } = require('./toggleAudio');
 
 let mainWindow;
 let mapContent;
@@ -28,14 +29,15 @@ function createWindow() {
 }
 
 function setupMapBrowserView() {
-    mapContent = new BrowserView({
+    mapContent = new WebContentsView({
         webPreferences: {
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            sandbox: true // remote content — keep it sandboxed
         }
     });
 
-    mainWindow.addBrowserView(mapContent);
+    mainWindow.contentView.addChildView(mapContent);
     updateViewBounds(); // Initial sizing based on titlebar height
 
     // Listen for finish load to inject the anti-timeout script
@@ -130,8 +132,18 @@ function setupMapBrowserView() {
                     // Run immediately on load
                     findAndZapPanel();
 
-                    // Hook into the existing MutationObserver (re-run on DOM changes)
-                    const panelObserver = new MutationObserver(() => findAndZapPanel());
+                    // FR24's map fires DOM mutations constantly, and findAndZapPanel walks
+                    // every element in the document. Coalesce bursts of mutations into a
+                    // single scan per animation frame so we don't pin the CPU.
+                    let scanScheduled = false;
+                    const panelObserver = new MutationObserver(() => {
+                        if (scanScheduled) return;
+                        scanScheduled = true;
+                        requestAnimationFrame(() => {
+                            scanScheduled = false;
+                            findAndZapPanel();
+                        });
+                    });
                     panelObserver.observe(document.body, { childList: true, subtree: true });
                 })();
             `;
@@ -141,25 +153,24 @@ function setupMapBrowserView() {
 }
 
 function setupAudioBrowserView() {
-    audioContent = new BrowserView({
+    audioContent = new WebContentsView({
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            sandbox: true, // remote content — keep it sandboxed
             // Allow autoplaying unmuted audio
             autoplayPolicy: 'no-user-gesture-required'
         }
     });
-    // Note: we do NOT add it to the mainWindow (keeps it completely hidden)
-    // or we add it with 0x0 size depending on how Electron handles unmounted views playing audio.
-    // For safety with audio playback, we attach it but give it a 0 size.
-    mainWindow.addBrowserView(audioContent);
+    // Attach the view but give it a 0x0 size so it stays completely hidden
+    // while its webContents keeps playing audio.
+    mainWindow.contentView.addChildView(audioContent);
     audioContent.setBounds({ x: 0, y: 0, width: 0, height: 0 });
 
     // Use a YouTube Live ATC stream as requested by the user.
-    // We add ?autoplay=1 to the URL to ensure it starts playing immediately
-    // Note: YouTube often blocks autoplay for non-muted videos if they aren't interacted with,
-    // but Electron's BrowserView can bypass this if we configure it correctly.
-    audioContent.webContents.loadURL('https://www.youtube.com/watch?v=NOZVUBsCDEI&autoplay=1');
+    // The /embed/ player honors autoplay=1 under autoplayPolicy: 'no-user-gesture-required'
+    // and skips the watch-page cookie/consent/ad chrome, so it starts unmuted reliably.
+    audioContent.webContents.loadURL('https://www.youtube.com/embed/NOZVUBsCDEI?autoplay=1');
 }
 
 function updateViewBounds() {
@@ -178,9 +189,7 @@ function updateViewBounds() {
 // IPC Handlers
 ipcMain.handle('toggle-audio', async () => {
     if (audioContent) {
-        const isCurrentlyMuted = audioContent.webContents.isAudioMuted();
-        audioContent.webContents.setAudioMuted(!isCurrentlyMuted);
-        return !isCurrentlyMuted; // Return new state
+        return toggleAudioMuted(audioContent.webContents);
     }
     return true;
 });
